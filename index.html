@@ -100,6 +100,8 @@
     input[type="email"]::placeholder { color: var(--text-3); }
 
     .hr { border-top: 1px solid var(--border); }
+    /* Honeypot — off-screen, real users never see/fill it; bots do */
+    .hp { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden; }
     .badge-active {
       background: rgba(96,165,250,0.10);
       border: 1px solid rgba(96,165,250,0.30);
@@ -365,6 +367,8 @@
 
       <form id="waitlist-form" class="flex flex-col sm:flex-row gap-3 mb-4" onsubmit="handleSubmit(event)">
         <input type="email" id="email-input" required placeholder="你的 Email" class="flex-1 px-5 py-4 text-sm" />
+        <!-- Honeypot: hidden from humans, ignored by autofill, filled by dumb bots -->
+        <input type="text" id="hp-field" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp" />
         <button type="submit" class="btn-primary px-6 py-4 rounded-xl font-bold text-sm whitespace-nowrap shrink-0">加入等待名單</button>
       </form>
 
@@ -373,7 +377,8 @@
       </div>
 
       <p class="text-xs" style="color:var(--text-3)">
-        加入即表示你同意收取 Nomad Life 的產品更新信（隨時可退訂）
+        加入即表示你同意收取 Nomad Life 的產品更新信（隨時可退訂）。詳見
+        <a href="privacy.html" class="underline hover:text-white transition-colors">隱私政策</a>。
       </p>
     </div>
   </section>
@@ -388,6 +393,7 @@
       <div class="flex items-center gap-6 text-xs" style="color:var(--text-3)">
         <a href="https://www.instagram.com/justin.wutopia" target="_blank" rel="noopener" class="hover:text-white transition-colors">Instagram</a>
         <a href="https://wutopia.com.tw" target="_blank" rel="noopener" class="hover:text-white transition-colors">Wutopia</a>
+        <a href="privacy.html" class="hover:text-white transition-colors">隱私政策</a>
         <span>© 2026 Wutopia Co., Ltd. · Taiwan</span>
       </div>
     </div>
@@ -413,6 +419,13 @@
       const email = document.getElementById('email-input').value.trim();
       const btn = e.target.querySelector('button[type="submit"]');
       const successEl = document.getElementById('success-msg');
+
+      // Honeypot tripped → silently fake success, never touch the DB
+      if (document.getElementById('hp-field').value) {
+        document.getElementById('waitlist-form').classList.add('hidden');
+        successEl.classList.remove('hidden');
+        return;
+      }
 
       btn.disabled = true;
       btn.textContent = '送出中…';
