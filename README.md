@@ -4,7 +4,11 @@
 
 ## 內容
 
-- `landing_page_nomad_life.html` — 單檔登陸頁（Tailwind CDN + Supabase waitlist）
+- `index.html` — 單檔登陸頁（Tailwind CDN + Supabase waitlist）
+
+## 上線
+
+GitHub Pages：Settings → Pages → Source: `main` / root。網址 `https://wutopia1224.github.io/nomad-life-wait-list/`
 
 ## 技術
 
@@ -17,7 +21,7 @@
 
 ```bash
 python3 -m http.server 8000
-# 開 http://localhost:8000/landing_page_nomad_life.html
+# 開 http://localhost:8000/
 ```
 
 ## 上線注意
