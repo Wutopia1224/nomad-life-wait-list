@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nomad Life · 讓夢想可計算</title>
+  <meta name="description" content="在買機票之前，先知道自己能撐多久。Nomad Life 是專為數位遊牧打造的多幣別記帳 App，自動平衡每日預算、離線也能記，現在開放等待名單。" />
+  <meta property="og:title" content="Nomad Life · 讓夢想可計算" />
+  <meta property="og:description" content="在買機票之前，先知道自己能撐多久。數位遊牧財務 App，現在開放等待名單。" />
+  <meta property="og:image" content="https://wutopia.com.tw/assets/nomad-life-og.jpg" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script>document.documentElement.classList.add('js');</script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=Inter:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── App design tokens (Dark / Kinetic Horizon v0.3.0) ── */
+    :root {
+      --bg: #0A1628;
+      --bg-grad: #111E35;
+      --surface: #1E293B;
+      --surface-high: #283548;
+      --surface-highest: #334155;
+      --border: #2A3A52;
+      --outline: #3A4A66;
+      --primary: #60A5FA;
+      --primary-dim: #3B82F6;
+      --primary-fixed: #93C5FD;
+      --secondary: #FF8A63;
+      --secondary-strong: #FF6B35;
+      --text: #F1F5FB;
+      --text-2: #94A9C4;
+      --text-3: #4A5E7A;
+      --success: #22C55E;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Manrope', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    h1, h2, h3, .display { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02em; }
+    .label { font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.14em; }
+    .tnum { font-variant-numeric: tabular-nums; }
+
+    /* Horizon ambient field — lives only behind the hero */
+    .horizon {
+      background:
+        radial-gradient(120% 80% at 78% 18%, rgba(96,165,250,0.16) 0%, transparent 55%),
+        radial-gradient(90% 70% at 12% 92%, rgba(255,107,53,0.10) 0%, transparent 60%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-grad) 100%);
+    }
+    .star-field {
+      background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 46px 46px;
+      mask-image: radial-gradient(80% 60% at 70% 30%, #000 0%, transparent 75%);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+    .card-elevated {
+      background: linear-gradient(180deg, var(--surface-high) 0%, var(--surface) 100%);
+      border: 1px solid var(--outline);
+      border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.50);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-fixed) 0%, var(--primary-dim) 100%);
+      color: #04203F;
+      box-shadow: 0 6px 16px rgba(96,165,250,0.28);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(96,165,250,0.42); }
+    .btn-primary:active { transform: translateY(0) scale(0.98); }
+
+    .grad-blue {
+      background: linear-gradient(120deg, var(--primary-fixed) 0%, var(--primary) 60%, #CFE3FF 100%);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .ink-orange { color: var(--secondary-strong); }
+
+    input[type="email"] {
+      background: var(--surface-highest);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    input[type="email"]:focus { border-color: var(--primary); box-shadow: 0 2px 0 0 var(--primary); }
+    input[type="email"]::placeholder { color: var(--text-3); }
+
+    .hr { border-top: 1px solid var(--border); }
+    .badge-active {
+      background: rgba(96,165,250,0.10);
+      border: 1px solid rgba(96,165,250,0.30);
+      color: var(--primary);
+    }
+
+    .row-cat { border-bottom: 1px solid rgba(58,74,102,0.30); }
+    .ph { line-height: 1; }
+
+    /* Runway meter */
+    .meter { height: 6px; border-radius: 999px; background: var(--surface-highest); overflow: hidden; }
+    .meter > i { display:block; height:100%; border-radius:999px;
+      background: linear-gradient(90deg, var(--secondary-strong), var(--secondary)); }
+
+    /* Motion — restrained, motivated, reduced-motion safe.
+       Hidden state gated behind .js so no-JS degrades to fully visible. */
+    .js .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .js .reveal.in { opacity: 1; transform: translateY(0); }
+    .lift { animation: lift 0.9s cubic-bezier(0.16,1,0.3,1) both; }
+    @keyframes lift { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+      .lift { animation: none; }
+    }
+  </style>
+</head>
+
+<body class="antialiased">
+
+  <!-- ══ NAV (no left logo, single CTA) ═════════════════════════════════════ -->
+  <nav class="absolute top-0 left-0 right-0 z-20 flex justify-end px-6 sm:px-10 py-6">
+    <a href="#waitlist" class="text-sm font-semibold transition-colors hover:text-white" style="color:var(--primary)">加入等待名單</a>
+  </nav>
+
+  <!-- ══ HERO — asymmetric split ════════════════════════════════════════════ -->
+  <header class="relative min-h-[100dvh] horizon overflow-hidden">
+    <div class="absolute inset-0 pointer-events-none star-field"></div>
+
+    <div class="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 min-h-[100dvh] grid lg:grid-cols-12 gap-12 items-center pt-28 pb-16">
+
+      <!-- Copy -->
+      <div class="lg:col-span-7 lift">
+        <p class="label text-[11px] mb-6" style="color:var(--text-3)">
+          讓夢想可計算 · <span style="color:var(--secondary-strong)">等待名單開放中</span>
+        </p>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.08] mb-7">
+          在買機票之前，<br/>
+          <span class="grad-blue">先知道自己能撐多久。</span>
+        </h1>
+        <p class="text-base sm:text-lg leading-relaxed mb-9 max-w-md" style="color:var(--text-2)">
+          Nomad Life 把數位遊牧的財務，從模糊的焦慮變成每天看得懂的數字。
+        </p>
+        <a href="#waitlist" class="btn-primary inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-base">
+          加入等待名單
+          <i class="ph-bold ph-arrow-right text-lg"></i>
+        </a>
+      </div>
+
+      <!-- Live app card -->
+      <div class="lg:col-span-5">
+        <div class="card-elevated p-6 max-w-sm mx-auto lg:ml-auto">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <p class="text-sm font-semibold text-white">京都遊牧計劃</p>
+              <p class="text-xs mt-0.5" style="color:var(--text-3)">第 30 天 · 3 種貨幣</p>
+            </div>
+            <span class="badge-active label text-[9px] px-2.5 py-1 rounded-full font-bold">TRIP ACTIVE</span>
+          </div>
+
+          <p class="label text-[10px] mb-1.5" style="color:var(--text-3)">今日還能花</p>
+          <p class="display text-5xl font-extrabold text-white tnum mb-1">NT$ 1,240</p>
+          <p class="text-xs mb-6" style="color:var(--secondary-strong)">本月預算已自動平衡 · 比平均多 NT$180</p>
+
+          <div class="mb-2 flex items-center justify-between text-xs">
+            <span style="color:var(--text-2)">預算續航</span>
+            <span class="text-white font-semibold tnum">還能撐 4.2 個月</span>
+          </div>
+          <div class="meter"><i style="width:64%"></i></div>
+
+          <div class="flex gap-2 mt-6">
+            <span class="flex-1 text-center text-xs py-2 rounded-lg tnum" style="background:var(--surface-highest);color:var(--text-2)">¥ JPY</span>
+            <span class="flex-1 text-center text-xs py-2 rounded-lg tnum" style="background:var(--surface-highest);color:var(--text-2)">NT$ TWD</span>
+            <span class="flex-1 text-center text-xs py-2 rounded-lg tnum" style="background:var(--surface-highest);color:var(--text-2)">$ USD</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══ PAIN — editorial stat block ════════════════════════════════════════ -->
+  <section class="py-28 px-6 sm:px-10">
+    <div class="max-w-5xl mx-auto grid lg:grid-cols-12 gap-12 items-center reveal">
+      <div class="lg:col-span-7">
+        <h2 class="text-3xl sm:text-4xl font-extrabold leading-snug mb-6">
+          擋住你出發的，<br/>
+          <span class="grad-blue">從來不是語言或技術。</span>
+        </h2>
+        <p class="text-base leading-relaxed mb-4" style="color:var(--text-2)">
+          「我要存多少才能出發？」「每個月到底會花多少？」「如果收入降低，我還撐得了幾個月？」
+        </p>
+        <p class="text-base leading-relaxed" style="color:var(--text-2)">
+          這不是沒決心，是財務上看不清楚，讓你一直按不下買票的按鈕。
+        </p>
+      </div>
+      <div class="lg:col-span-5">
+        <div class="card p-8 text-center">
+          <p class="display text-6xl font-extrabold grad-blue tnum mb-3">52%</p>
+          <p class="text-sm leading-relaxed" style="color:var(--text-2)">
+            對數位遊牧有興趣的人，最大的障礙是同一個問題：<span class="text-white font-semibold">錢，到底夠不夠用。</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ FEATURES — asymmetric (1 lead + 2) ═════════════════════════════════ -->
+  <section class="py-12 px-6 sm:px-10">
+    <div class="max-w-5xl mx-auto">
+      <p class="label text-[11px] text-center mb-3" style="color:var(--text-3)">三件 App 替你算清楚的事</p>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-center mb-14">讓數字替你做決定</h2>
+
+      <div class="grid lg:grid-cols-2 gap-5 mb-5 reveal">
+        <!-- Lead feature -->
+        <div class="card p-8 flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-5" style="background:rgba(255,138,99,0.14)">
+              <i class="ph ph-scales text-2xl" style="color:var(--secondary-strong)"></i>
+            </div>
+            <h3 class="font-bold text-xl mb-3 text-white">每日自動平衡預算</h3>
+            <p class="text-sm leading-relaxed" style="color:var(--text-2)">
+              今天少花的，自動分配到剩下的日子。記一筆不到 10 秒，今天還能花多少，數字告訴你，不靠感覺。
+            </p>
+          </div>
+          <div class="mt-7 pt-5 hr flex items-end justify-between">
+            <span class="text-xs" style="color:var(--text-3)">今日結餘</span>
+            <span class="display text-3xl font-extrabold text-white tnum">NT$ <span class="ink-orange">1,240</span></span>
+          </div>
+        </div>
+
+        <!-- Stacked pair -->
+        <div class="grid gap-5">
+          <div class="card p-7">
+            <div class="w-11 h-11 rounded-2xl flex items-center justify-center mb-4" style="background:rgba(96,165,250,0.14)">
+              <i class="ph ph-chart-line-up text-xl" style="color:var(--primary)"></i>
+            </div>
+            <h3 class="font-bold text-lg mb-2 text-white">出發前先算清楚</h3>
+            <p class="text-sm leading-relaxed" style="color:var(--text-2)">
+              設定目的地、時長、預算上限，系統算出每日可動用額度。知道自己的底，再決定何時買機票。
+            </p>
+          </div>
+          <div class="card p-7">
+            <div class="w-11 h-11 rounded-2xl flex items-center justify-center mb-4" style="background:rgba(96,165,250,0.14)">
+              <i class="ph ph-globe-hemisphere-west text-xl" style="color:var(--primary)"></i>
+            </div>
+            <h3 class="font-bold text-lg mb-2 text-white">多幣別 · 離線也能記</h3>
+            <p class="text-sm leading-relaxed" style="color:var(--text-2)">
+              同時看三種貨幣、每日即時匯率。網路不穩是遊牧日常，離線照記，連上線自動同步。
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ PROOF — real ledger + quote ════════════════════════════════════════ -->
+  <section class="py-28 px-6 sm:px-10">
+    <div class="max-w-5xl mx-auto grid lg:grid-cols-12 gap-12 items-center reveal">
+
+      <!-- Month breakdown card -->
+      <div class="lg:col-span-6">
+        <div class="card-elevated p-7">
+          <div class="flex items-center justify-between mb-5">
+            <p class="text-sm font-semibold text-white">2026 年 3 月 · 京都帳本</p>
+            <span class="badge-active label text-[9px] px-2.5 py-1 rounded-full font-bold">已結算</span>
+          </div>
+
+          <div class="space-y-0 mb-5">
+            <div class="row-cat flex items-center justify-between py-3">
+              <span class="flex items-center gap-3 text-sm" style="color:var(--text-2)"><i class="ph ph-house-line text-lg" style="color:var(--text-3)"></i>住宿</span>
+              <span class="text-sm font-semibold text-white tnum">¥22,000</span>
+            </div>
+            <div class="row-cat flex items-center justify-between py-3">
+              <span class="flex items-center gap-3 text-sm" style="color:var(--text-2)"><i class="ph ph-fork-knife text-lg" style="color:var(--text-3)"></i>餐飲</span>
+              <span class="text-sm font-semibold text-white tnum">¥34,000</span>
+            </div>
+            <div class="row-cat flex items-center justify-between py-3">
+              <span class="flex items-center gap-3 text-sm" style="color:var(--text-2)"><i class="ph ph-train text-lg" style="color:var(--text-3)"></i>交通</span>
+              <span class="text-sm font-semibold text-white tnum">¥6,000</span>
+            </div>
+            <div class="flex items-center justify-between py-3">
+              <span class="flex items-center gap-3 text-sm" style="color:var(--text-2)"><i class="ph ph-laptop text-lg" style="color:var(--text-3)"></i>工作空間</span>
+              <span class="text-sm font-semibold text-white tnum">¥15,000</span>
+            </div>
+          </div>
+
+          <div class="pt-4 flex items-center justify-between" style="border-top:1px solid var(--outline)">
+            <span class="label text-[10px]" style="color:var(--text-3)">月度合計</span>
+            <div class="text-right">
+              <p class="display text-3xl font-extrabold text-white tnum">¥77,000</p>
+              <p class="text-xs mt-0.5 tnum" style="color:var(--secondary-strong)">≈ NT$ 15,400</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Narrative + quote -->
+      <div class="lg:col-span-6">
+        <h2 class="text-3xl sm:text-4xl font-extrabold leading-snug mb-5">
+          京都的第一個月，<br/>
+          <span class="grad-blue">比在台北租一間房還便宜。</span>
+        </h2>
+        <p class="text-base leading-relaxed mb-8" style="color:var(--text-2)">
+          這不是理想化的數字，是真實記下來的帳本。當花費被算清楚，遠方就不再只是想像。
+        </p>
+        <blockquote class="card p-6">
+          <p class="text-base leading-relaxed text-white mb-4">
+            「出發之前，我最怕的就是不知道錢夠不夠用。現在每天記帳，每天都知道自己還能撐多久。」
+          </p>
+          <cite class="not-italic text-sm font-semibold" style="color:var(--primary)">Justin</cite>
+          <span class="text-sm" style="color:var(--text-3)"> · 工程師，京都第 30 天</span>
+        </blockquote>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ FIT — checklist ════════════════════════════════════════════════════ -->
+  <section class="py-28 px-6 sm:px-10">
+    <div class="max-w-3xl mx-auto reveal">
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-center mb-12">這個 App，為這樣的你而做</h2>
+
+      <div class="grid sm:grid-cols-2 gap-x-10 gap-y-4 mb-10">
+        <div class="flex items-start gap-3"><i class="ph-bold ph-check mt-1 shrink-0" style="color:var(--primary)"></i><p class="text-base" style="color:var(--text)">有遠距工作能力（工程師、顧問、設計師）</p></div>
+        <div class="flex items-start gap-3"><i class="ph-bold ph-check mt-1 shrink-0" style="color:var(--primary)"></i><p class="text-base" style="color:var(--text)">對數位遊牧有想法，但還沒出發</p></div>
+        <div class="flex items-start gap-3"><i class="ph-bold ph-check mt-1 shrink-0" style="color:var(--primary)"></i><p class="text-base" style="color:var(--text)">不確定每個月需要多少錢才夠用</p></div>
+        <div class="flex items-start gap-3"><i class="ph-bold ph-check mt-1 shrink-0" style="color:var(--primary)"></i><p class="text-base" style="color:var(--text)">想先在財務上看清楚，再做決定</p></div>
+        <div class="flex items-start gap-3"><i class="ph-bold ph-check mt-1 shrink-0" style="color:var(--primary)"></i><p class="text-base" style="color:var(--text)">不想靠感覺管錢，想要數字說話</p></div>
+      </div>
+
+      <div class="card p-5">
+        <p class="text-sm leading-relaxed" style="color:var(--text-3)">
+          <i class="ph ph-info" style="color:var(--text-3)"></i>
+          如果你已是資深遊牧、財務管理很完善，Nomad Life 現在可能還不是你最需要的工具。我們正在成長，歡迎之後再來看看。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ WAITLIST CTA ═══════════════════════════════════════════════════════ -->
+  <section id="waitlist" class="py-28 px-6 sm:px-10">
+    <div class="max-w-lg mx-auto text-center reveal">
+      <div class="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-6 badge-active">
+        <i class="ph ph-paper-plane-tilt text-xl" style="color:var(--primary)"></i>
+      </div>
+
+      <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">
+        現在加入，<span class="grad-blue">搶先體驗</span>
+      </h2>
+      <p class="text-base leading-relaxed mb-8" style="color:var(--text-2)">
+        第一批試用用戶將在 App 正式上架前獲得邀請。不需要信用卡，不需要付費。
+      </p>
+
+      <form id="waitlist-form" class="flex flex-col sm:flex-row gap-3 mb-4" onsubmit="handleSubmit(event)">
+        <input type="email" id="email-input" required placeholder="你的 Email" class="flex-1 px-5 py-4 text-sm" />
+        <button type="submit" class="btn-primary px-6 py-4 rounded-xl font-bold text-sm whitespace-nowrap shrink-0">加入等待名單</button>
+      </form>
+
+      <div id="success-msg" class="hidden card rounded-xl py-3 px-4 text-sm mb-4" style="color:var(--primary)">
+        感謝！我們會在第一批開放前通知你。
+      </div>
+
+      <p class="text-xs" style="color:var(--text-3)">
+        加入即表示你同意收取 Nomad Life 的產品更新信（隨時可退訂）
+      </p>
+    </div>
+  </section>
+
+  <!-- ══ FOOTER ═════════════════════════════════════════════════════════════ -->
+  <footer class="hr py-12 px-6 sm:px-10">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="text-center sm:text-left">
+        <span class="display font-extrabold text-sm"><span class="text-white">nomad</span> <span class="ink-orange">life</span></span>
+        <span class="text-xs ml-3" style="color:var(--text-3)">讓夢想可計算</span>
+      </div>
+      <div class="flex items-center gap-6 text-xs" style="color:var(--text-3)">
+        <a href="https://www.instagram.com/justin.wutopia" target="_blank" rel="noopener" class="hover:text-white transition-colors">Instagram</a>
+        <a href="https://wutopia.com.tw" target="_blank" rel="noopener" class="hover:text-white transition-colors">Wutopia</a>
+        <span>© 2026 Wutopia Co., Ltd. · Taiwan</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ── Supabase init（沿用既有 waitlist 後端）─────────────────────────────────
+    const { createClient } = supabase;
+    const _supabase = createClient(
+      'https://boziqjhoplnttnhbfrjs.supabase.co',
+      'sb_publishable_RK2ljbfouv3mAEOrDlFolw_bzF9kaoC'
+    );
+
+    // ── Scroll reveal (IntersectionObserver, reduced-motion safe via CSS) ──────
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    // ── Waitlist form ──────────────────────────────────────────────────────────
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('email-input').value.trim();
+      const btn = e.target.querySelector('button[type="submit"]');
+      const successEl = document.getElementById('success-msg');
+
+      btn.disabled = true;
+      btn.textContent = '送出中…';
+
+      const { error } = await _supabase
+        .from('waitlist')
+        .insert([{ email, source: 'landing_page' }]);
+
+      if (error) {
+        if (error.code === '23505') {
+          successEl.textContent = '你已經在名單裡了，我們會第一時間通知你。';
+        } else {
+          btn.disabled = false;
+          btn.textContent = '加入等待名單';
+          alert('送出失敗，請稍後再試。');
+          return;
+        }
+      } else {
+        successEl.textContent = '感謝！我們會在第一批開放前通知你。';
+        if (typeof gtag !== 'undefined') gtag('event', 'waitlist_submit', { email });
+      }
+
+      document.getElementById('waitlist-form').classList.add('hidden');
+      successEl.classList.remove('hidden');
+    }
+  </script>
+
+  <!-- GA4 (replace G-XXXXXXXXXX with actual tag)
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
+  -->
+
+</body>
+</html>
