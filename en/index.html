@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nomad Life · Make the dream calculable</title>
+  <meta name="description" content="Before you book the flight, know how long you can last. Nomad Life is a multi-currency expense app built for digital nomads — auto-balancing daily budgets, works offline. Waitlist now open." />
+  <meta property="og:title" content="Nomad Life · Make the dream calculable" />
+  <meta property="og:description" content="Before you book the flight, know how long you can last. A finance app for digital nomads — waitlist now open." />
+  <meta property="og:image" content="https://wutopia.com.tw/assets/nomad-life-og.jpg" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script>document.documentElement.classList.add('js');</script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=Inter:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── App design tokens (Dark / Kinetic Horizon v0.3.0) ── */
+    :root {
+      --bg: #0A1628;
+      --bg-grad: #111E35;
+      --surface: #1E293B;
+      --surface-high: #283548;
+      --surface-highest: #334155;
+      --border: #2A3A52;
+      --outline: #3A4A66;
+      --primary: #60A5FA;
+      --primary-dim: #3B82F6;
+      --primary-fixed: #93C5FD;
+      --secondary: #FF8A63;
+      --secondary-strong: #FF6B35;
+      --text: #F1F5FB;
+      --text-2: #94A9C4;
+      --text-3: #4A5E7A;
+      --success: #22C55E;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Manrope', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    h1, h2, h3, .display { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02em; }
+    .label { font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.14em; }
+    .tnum { font-variant-numeric: tabular-nums; }
+
+    /* Horizon ambient field — lives only behind the hero */
+    .horizon {
+      background:
+        radial-gradient(120% 80% at 78% 18%, rgba(96,165,250,0.16) 0%, transparent 55%),
+        radial-gradient(90% 70% at 12% 92%, rgba(255,107,53,0.10) 0%, transparent 60%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-grad) 100%);
+    }
+    .star-field {
+      background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 46px 46px;
+      mask-image: radial-gradient(80% 60% at 70% 30%, #000 0%, transparent 75%);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+    .card-elevated {
+      background: linear-gradient(180deg, var(--surface-high) 0%, var(--surface) 100%);
+      border: 1px solid var(--outline);
+      border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.50);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-fixed) 0%, var(--primary-dim) 100%);
+      color: #04203F;
+      box-shadow: 0 6px 16px rgba(96,165,250,0.28);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(96,165,250,0.42); }
+    .btn-primary:active { transform: translateY(0) scale(0.98); }
+
+    .grad-blue {
+      background: linear-gradient(120deg, var(--primary-fixed) 0%, var(--primary) 60%, #CFE3FF 100%);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .ink-orange { color: var(--secondary-strong); }
+
+    input[type="email"] {
+      background: var(--surface-highest);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    input[type="email"]:focus { border-color: var(--primary); box-shadow: 0 2px 0 0 var(--primary); }
+    input[type="email"]::placeholder { color: var(--text-3); }
+
+    .hr { border-top: 1px solid var(--border); }
+    /* Honeypot — off-screen, real users never see/fill it; bots do */
+    .hp { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+    .badge-active {
+      background: rgba(96,165,250,0.10);
+      border: 1px solid rgba(96,165,250,0.30);
+      color: var(--primary);
+    }
+
+    .row-cat { border-bottom: 1px solid rgba(58,74,102,0.30); }
+    .ph { line-height: 1; }
+
+    /* Runway meter */
+    .meter { height: 6px; border-radius: 999px; background: var(--surface-highest); overflow: hidden; }
+    .meter > i { display:block; height:100%; border-radius:999px;
+      background: linear-gradient(90deg, var(--secondary-strong), var(--secondary)); }
+
+    .js .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .js .reveal.in { opacity: 1; transform: translateY(0); }
+    .lift { animation: lift 0.9s cubic-bezier(0.16,1,0.3,1) both; }
+    @keyframes lift { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+      .lift { animation: none; }
+    }
+  </style>
+</head>
+
+<body class="antialiased">
+
+  <!-- ══ NAV (lang toggle + single CTA) ═════════════════════════════════════ -->
+  <nav class="absolute top-0 left-0 right-0 z-20 flex items-center justify-end gap-6 px-6 sm:px-10 py-6">
+    <a href="../index.html" class="text-sm font-medium transition-colors hover:text-white" style="color:var(--text-3)">中文</a>
+    <a href="#waitlist" class="text-sm font-semibold transition-colors hover:text-white" style="color:var(--primary)">Join the waitlist</a>
+  </nav>
+
+  <!-- ══ HERO — asymmetric split ════════════════════════════════════════════ -->
+  <header class="relative min-h-[100dvh] horizon overflow-hidden">
+    <div class="absolute inset-0 pointer-events-none star-field"></div>
+
+    <div class="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 min-h-[100dvh] grid lg:grid-cols-12 gap-12 items-center pt-28 pb-16">
+
+      <!-- Copy -->
+      <div class="lg:col-span-7 lift">
+        <p class="label text-[11px] mb-6" style="color:var(--text-3)">
+          Make the dream calculable · <span style="color:var(--secondary-strong)">Waitlist open</span>
+        </p>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.08] mb-7">
+          Before you book the flight,<br/>
+          <span class="grad-blue">know how long you can last.</span>
+        </h1>
+        <p class="text-base sm:text-lg leading-relaxed mb-9 max-w-md" style="color:var(--text-2)">
+          Nomad Life turns nomad finances from vague anxiety into numbers you can read every single day.
+        </p>
+        <a href="#waitlist" class="btn-primary inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-base">
+          Join the waitlist
+          <i class="ph-bold ph-arrow-right text-lg"></i>
+        </a>
+      </div>
+
+      <!-- Live app card -->
+      <div class="lg:col-span-5">
+        <div class="card-elevated p-6 max-w-sm mx-auto lg:ml-auto">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <p class="text-sm font-semibold text-white">Kyoto nomad plan</p>
+              <p class="text-xs mt-0.5" style="color:var(--text-3)">Day 30 · 3 currencies</p>
+            </div>
+            <span class="badge-active label text-[9px] px-2.5 py-1 rounded-full font-bold">TRIP ACTIVE</span>
+          </div>
+
+          <p class="label text-[10px] mb-1.5" style="color:var(--text-3)">Spendable today</p>
+          <p class="display text-5xl font-extrabold text-white tnum mb-1">NT$ 1,240</p>
+          <p class="text-xs mb-6" style="color:var(--secondary-strong)">Auto-balanced this month · NT$180 above average</p>
+
+          <div class="mb-2 flex items-center justify-between text-xs">
+            <span style="color:var(--text-2)">Runway</span>
+            <span class="text-white font-semibold tnum">4.2 months left</span>
+          </div>
+          <div class="meter"><i style="width:64%"></i></div>
+
+          <div class="flex gap-2 mt-6">
+            <span class="flex-1 text-center text-xs py-2 rounded-lg tnum" style="background:var(--surface-highest);color:var(--text-2)">¥ JPY</span>
+            <span class="flex-1 text-center text-xs py-2 rounded-lg tnum" style="background:var(--surface-highest);color:var(--text-2)">NT$ TWD</span>
+            <span class="flex-1 text-center text-xs py-2 rounded-lg tnum" style="background:var(--surface-highest);color:var(--text-2)">$ USD</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══ PAIN — editorial stat block ════════════════════════════════════════ -->
+  <section class="py-28 px-6 sm:px-10">
+    <div class="max-w-5xl mx-auto grid lg:grid-cols-12 gap-12 items-center reveal">
+      <div class="lg:col-span-7">
+        <h2 class="text-3xl sm:text-4xl font-extrabold leading-snug mb-6">
+          What stops you<br/>
+          <span class="grad-blue">was never the language or the skills.</span>
+        </h2>
+        <p class="text-base leading-relaxed mb-4" style="color:var(--text-2)">
+          “How much do I need to save before I leave?” “What will I actually spend each month?” “If my income drops, how many months can I last?”
+        </p>
+        <p class="text-base leading-relaxed" style="color:var(--text-2)">
+          It’s not a lack of resolve. It’s that the money is too blurry to see — so you never hit “book”.
+        </p>
+      </div>
+      <div class="lg:col-span-5">
+        <div class="card p-8 text-center">
+          <p class="display text-6xl font-extrabold grad-blue tnum mb-3">52%</p>
+          <p class="text-sm leading-relaxed" style="color:var(--text-2)">
+            of people interested in going nomad name the same biggest blocker: <span class="text-white font-semibold">will the money actually be enough?</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ FEATURES — asymmetric (1 lead + 2) ═════════════════════════════════ -->
+  <section class="py-12 px-6 sm:px-10">
+    <div class="max-w-5xl mx-auto">
+      <p class="label text-[11px] text-center mb-3" style="color:var(--text-3)">Three things the app works out for you</p>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-center mb-14">Let the numbers decide</h2>
+
+      <div class="grid lg:grid-cols-2 gap-5 mb-5 reveal">
+        <!-- Lead feature -->
+        <div class="card p-8 flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-5" style="background:rgba(255,138,99,0.14)">
+              <i class="ph ph-scales text-2xl" style="color:var(--secondary-strong)"></i>
+            </div>
+            <h3 class="font-bold text-xl mb-3 text-white">Daily budget, auto-balanced</h3>
+            <p class="text-sm leading-relaxed" style="color:var(--text-2)">
+              Underspend today and it spreads across the days you have left. Logging takes under 10 seconds — how much you can spend today comes from the numbers, not a gut feeling.
+            </p>
+          </div>
+          <div class="mt-7 pt-5 hr flex items-end justify-between">
+            <span class="text-xs" style="color:var(--text-3)">Left for today</span>
+            <span class="display text-3xl font-extrabold text-white tnum">NT$ <span class="ink-orange">1,240</span></span>
+          </div>
+        </div>
+
+        <!-- Stacked pair -->
+        <div class="grid gap-5">
+          <div class="card p-7">
+            <div class="w-11 h-11 rounded-2xl flex items-center justify-center mb-4" style="background:rgba(96,165,250,0.14)">
+              <i class="ph ph-chart-line-up text-xl" style="color:var(--primary)"></i>
+            </div>
+            <h3 class="font-bold text-lg mb-2 text-white">Know it before you go</h3>
+            <p class="text-sm leading-relaxed" style="color:var(--text-2)">
+              Set a destination, a length, and a budget cap — and get your daily allowance. Know your limit first, then decide when to book the flight.
+            </p>
+          </div>
+          <div class="card p-7">
+            <div class="w-11 h-11 rounded-2xl flex items-center justify-center mb-4" style="background:rgba(96,165,250,0.14)">
+              <i class="ph ph-globe-hemisphere-west text-xl" style="color:var(--primary)"></i>
+            </div>
+            <h3 class="font-bold text-lg mb-2 text-white">Multi-currency · works offline</h3>
+            <p class="text-sm leading-relaxed" style="color:var(--text-2)">
+              See three currencies at once with daily live rates. Patchy Wi-Fi is nomad life — log offline, and it syncs automatically once you’re back online.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ PROOF — real ledger + quote ════════════════════════════════════════ -->
+  <section class="py-28 px-6 sm:px-10">
+    <div class="max-w-5xl mx-auto grid lg:grid-cols-12 gap-12 items-center reveal">
+
+      <!-- Month breakdown card -->
+      <div class="lg:col-span-6">
+        <div class="card-elevated p-7">
+          <div class="flex items-center justify-between mb-5">
+            <p class="text-sm font-semibold text-white">March 2026 · Kyoto ledger</p>
+            <span class="badge-active label text-[9px] px-2.5 py-1 rounded-full font-bold">CLOSED</span>
+          </div>
+
+          <div class="space-y-0 mb-5">
+            <div class="row-cat flex items-center justify-between py-3">
+              <span class="flex items-center gap-3 text-sm" style="color:var(--text-2)"><i class="ph ph-house-line text-lg" style="color:var(--text-3)"></i>Housing</span>
+              <span class="text-sm font-semibold text-white tnum">¥22,000</span>
+            </div>
+            <div class="row-cat flex items-center justify-between py-3">
+              <span class="flex items-center gap-3 text-sm" style="color:var(--text-2)"><i class="ph ph-fork-knife text-lg" style="color:var(--text-3)"></i>Food &amp; drink</span>
+              <span class="text-sm font-semibold text-white tnum">¥34,000</span>
+            </div>
+            <div class="row-cat flex items-center justify-between py-3">
+              <span class="flex items-center gap-3 text-sm" style="color:var(--text-2)"><i class="ph ph-train text-lg" style="color:var(--text-3)"></i>Transport</span>
+              <span class="text-sm font-semibold text-white tnum">¥6,000</span>
+            </div>
+            <div class="flex items-center justify-between py-3">
+              <span class="flex items-center gap-3 text-sm" style="color:var(--text-2)"><i class="ph ph-laptop text-lg" style="color:var(--text-3)"></i>Workspace</span>
+              <span class="text-sm font-semibold text-white tnum">¥15,000</span>
+            </div>
+          </div>
+
+          <div class="pt-4 flex items-center justify-between" style="border-top:1px solid var(--outline)">
+            <span class="label text-[10px]" style="color:var(--text-3)">Monthly total</span>
+            <div class="text-right">
+              <p class="display text-3xl font-extrabold text-white tnum">¥77,000</p>
+              <p class="text-xs mt-0.5 tnum" style="color:var(--secondary-strong)">≈ US$ 490</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Narrative + quote -->
+      <div class="lg:col-span-6">
+        <h2 class="text-3xl sm:text-4xl font-extrabold leading-snug mb-5">
+          My first month in Kyoto<br/>
+          <span class="grad-blue">cost less than renting a room back home.</span>
+        </h2>
+        <p class="text-base leading-relaxed mb-8" style="color:var(--text-2)">
+          These aren’t idealized numbers — it’s a real ledger. Once the spending is clear, “somewhere far away” stops being just a daydream.
+        </p>
+        <blockquote class="card p-6">
+          <p class="text-base leading-relaxed text-white mb-4">
+            “Before I left, my biggest fear was not knowing whether the money would last. Now I track every day — and every day I know exactly how long I can keep going.”
+          </p>
+          <cite class="not-italic text-sm font-semibold" style="color:var(--primary)">Justin</cite>
+          <span class="text-sm" style="color:var(--text-3)"> · engineer, day 30 in Kyoto</span>
+        </blockquote>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ FIT — checklist ════════════════════════════════════════════════════ -->
+  <section class="py-28 px-6 sm:px-10">
+    <div class="max-w-3xl mx-auto reveal">
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-center mb-12">Built for you if…</h2>
+
+      <div class="grid sm:grid-cols-2 gap-x-10 gap-y-4 mb-10">
+        <div class="flex items-start gap-3"><i class="ph-bold ph-check mt-1 shrink-0" style="color:var(--primary)"></i><p class="text-base" style="color:var(--text)">You can work remotely (engineer, consultant, designer)</p></div>
+        <div class="flex items-start gap-3"><i class="ph-bold ph-check mt-1 shrink-0" style="color:var(--primary)"></i><p class="text-base" style="color:var(--text)">You’ve thought about going nomad, but haven’t left yet</p></div>
+        <div class="flex items-start gap-3"><i class="ph-bold ph-check mt-1 shrink-0" style="color:var(--primary)"></i><p class="text-base" style="color:var(--text)">You’re not sure how much you’d actually need each month</p></div>
+        <div class="flex items-start gap-3"><i class="ph-bold ph-check mt-1 shrink-0" style="color:var(--primary)"></i><p class="text-base" style="color:var(--text)">You want the finances clear before you decide</p></div>
+        <div class="flex items-start gap-3"><i class="ph-bold ph-check mt-1 shrink-0" style="color:var(--primary)"></i><p class="text-base" style="color:var(--text)">You’d rather let the numbers talk than manage money by feel</p></div>
+      </div>
+
+      <div class="card p-5">
+        <p class="text-sm leading-relaxed" style="color:var(--text-3)">
+          <i class="ph ph-info" style="color:var(--text-3)"></i>
+          If you’re already a seasoned nomad with your finances dialed in, Nomad Life might not be what you need yet. We’re still growing — come back and check on us later.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ WAITLIST CTA ═══════════════════════════════════════════════════════ -->
+  <section id="waitlist" class="py-28 px-6 sm:px-10">
+    <div class="max-w-lg mx-auto text-center reveal">
+      <div class="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-6 badge-active">
+        <i class="ph ph-paper-plane-tilt text-xl" style="color:var(--primary)"></i>
+      </div>
+
+      <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">
+        Join now, <span class="grad-blue">get early access</span>
+      </h2>
+      <p class="text-base leading-relaxed mb-8" style="color:var(--text-2)">
+        Be one of the first Beta users, try Nomad Life early, and get <span class="grad-orange font-semibold">50% off a future subscription</span>.
+      </p>
+
+      <form id="waitlist-form" class="flex flex-col sm:flex-row gap-3 mb-4" onsubmit="handleSubmit(event)">
+        <input type="email" id="email-input" required placeholder="Your email" class="flex-1 px-5 py-4 text-sm" />
+        <!-- Honeypot: hidden from humans, ignored by autofill, filled by dumb bots -->
+        <input type="text" id="hp-field" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp" />
+        <button type="submit" class="btn-primary px-6 py-4 rounded-xl font-bold text-sm whitespace-nowrap shrink-0">Join the waitlist</button>
+      </form>
+
+      <div id="success-msg" class="hidden card rounded-xl py-3 px-4 text-sm mb-4" style="color:var(--primary)">
+        Thanks! We’ll let you know before the first batch opens.
+      </div>
+
+      <p class="text-xs" style="color:var(--text-3)">
+        By joining, you agree to receive Nomad Life product updates (unsubscribe anytime). See our
+        <a href="../privacy.html" class="underline hover:text-white transition-colors">Privacy Policy</a>.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══ FOOTER ═════════════════════════════════════════════════════════════ -->
+  <footer class="hr py-12 px-6 sm:px-10">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="text-center sm:text-left">
+        <span class="display font-extrabold text-sm"><span class="text-white">nomad</span> <span class="ink-orange">life</span></span>
+        <span class="text-xs ml-3" style="color:var(--text-3)">Make the dream calculable</span>
+      </div>
+      <div class="flex items-center gap-6 text-xs" style="color:var(--text-3)">
+        <a href="https://www.instagram.com/justin.wutopia" target="_blank" rel="noopener" class="hover:text-white transition-colors">Instagram</a>
+        <a href="https://wutopia.com.tw" target="_blank" rel="noopener" class="hover:text-white transition-colors">Wutopia</a>
+        <a href="../privacy.html" class="hover:text-white transition-colors">Privacy Policy</a>
+        <span>© 2026 Wutopia Co., Ltd. · Taiwan</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ── Supabase init (shares the existing waitlist backend) ───────────────────
+    const { createClient } = supabase;
+    const _supabase = createClient(
+      'https://poncyhucmxxtqyyeyenu.supabase.co',
+      'sb_publishable_NCZox2EVaOn_hd_rieVl9w_idAmKqli'
+    );
+
+    // ── Scroll reveal (IntersectionObserver, reduced-motion safe via CSS) ──────
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    // ── Waitlist form ──────────────────────────────────────────────────────────
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('email-input').value.trim();
+      const btn = e.target.querySelector('button[type="submit"]');
+      const successEl = document.getElementById('success-msg');
+
+      // Honeypot tripped → silently fake success, never touch the DB
+      if (document.getElementById('hp-field').value) {
+        document.getElementById('waitlist-form').classList.add('hidden');
+        successEl.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Submitting…';
+
+      const { error } = await _supabase
+        .from('waitlist')
+        .insert([{ email, source: 'landing_page_en' }]);
+
+      if (error) {
+        if (error.code === '23505') {
+          successEl.textContent = 'You’re already on the list — we’ll be in touch first.';
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Join the waitlist';
+          alert('Something went wrong, please try again.');
+          return;
+        }
+      } else {
+        successEl.textContent = 'Thanks! We’ll let you know before the first batch opens.';
+        if (typeof gtag !== 'undefined') gtag('event', 'waitlist_submit', { email });
+      }
+
+      document.getElementById('waitlist-form').classList.add('hidden');
+      successEl.classList.remove('hidden');
+    }
+  </script>
+
+  <!-- GA4 (replace G-XXXXXXXXXX with actual tag)
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
+  -->
+
+</body>
+</html>
